@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import logging
-import google.generativeai as genai
+from google import genai
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes, CommandHandler
 
@@ -15,8 +15,8 @@ logging.basicConfig(
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-# إعداد مكتبة جيميناي بالمفتاح المخصص
-genai.configure(api_key=GEMINI_API_KEY)
+# إعداد مكتبة جيميناي الحديثة
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 # التوجيه الأساسي والنظامي للمساعد الأكاديمي (System Prompt)
 SYSTEM_PROMPT = """
@@ -36,46 +36,27 @@ SYSTEM_PROMPT = """
 3. ساعد الباحثة في صياغة وهيكلة فصول البحث (خاصة الفصل الثالث والتعديلات المطلوبة من المشرفة والدكتورة) وتقديم مقترحات ذكية لتقليل RTO و RPO.
 """
 
-# تخزين سجل المحادثة لكل مستخدم للحفاظ على السياق والذاكرة
-user_history = {}
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
         "🎓 مرحباً توحيدة!\n\n"
         "أنا مساعدك الأكاديمي DRaaS5.0 لبحث الدبلوم عن DRaaS.\n\n"
-        "يمكنك سؤالي عن:\n"
-        "📖 الإطار النظري\n"
-        "⏱️ مفاهيم RTO/RPO\n"
-        "📚 المراجع الأكاديمية\n"
-        "🏗️ إطار العمل المقترح\n"
-        "✍️ صياغة وتعديل فصول البحث\n\n"
-        "اكتبي سؤالك وأنا جاهز! 🚀"
+        "يمكنك سؤالي عن كل ما يخص البحث وصياغة الفصول. أرسلي سؤالكِ الآن! 🚀"
     )
     await update.message.reply_text(welcome_text)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
     user_text = update.message.text
-
-    # تهيئة سجل المحادثة للمستخدم الجديد
-    if user_id not in user_history:
-        user_history[user_id] = []
 
     # إظهار حالة "جاري الكتابة..." في تليجرام
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
     try:
-        # إعداد نموذج جيميناي مع التوجيهات الصارمة للبحث
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction=SYSTEM_PROMPT
+        # استدعاء نموذج جيميناي الحديث وإرسال الرسالة مباشرة
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=user_text,
+            config={'system_instruction': SYSTEM_PROMPT}
         )
-        
-        # بناء المحادثة الحالية
-        chat = model.start_chat(history=[])
-        
-        # إرسال نص الرسالة واستقبال الرد من جيميناي
-        response = chat.send_message(user_text)
         reply = response.text
 
         # إرسال الرد للباحثة في تليجرام
@@ -86,8 +67,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ حدث خطأ أثناء معالجة الطلب، حاولي مرة أخرى.")
 
 async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    user_history[user_id] = []
     await update.message.reply_text("🧹 تم مسح سجل المحادثة بنجاح ✅")
 
 def main():
@@ -98,8 +77,9 @@ def main():
     app.add_handler(CommandHandler("clear", clear))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    print("✅ البوت شغال ومستعد لاستقبال الرسائل عبر Gemini...")
+    print("✅ البوت شغال ومستعد لاستقبال الرسائل عبر ميزات جوجل الحديثة...")
     app.run_polling()
 
 if __name__ == "__main__":
     main()
+
