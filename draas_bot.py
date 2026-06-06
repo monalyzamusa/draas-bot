@@ -98,7 +98,7 @@ def main():
     app.add_handler(CommandHandler("clear", clear))
     
     # فلتر شامل يستقبل النصوص والصور والوسائط والعناوين في دالة واحدة
-    app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.Document.ALL, handle_message))
+    app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO, handle_message))
     
     print("🚀 البوت النهائي الشامل شغال ومستعد لاستقبال كافة أنواع البيانات الأكاديمية...")
     app.run_polling()
