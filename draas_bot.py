@@ -1,112 +1,104 @@
-"""
-بوت تيليجرام - مساعد بحث DRaaS
-الدارسة: توحيدة موسى الحسن محمد
-"""
-
-import anthropic
+# -*- coding: utf-8 -*-
 import os
+import logging
+import google.generativeai as genai
 from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters, ContextTypes
+from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes, CommandHandler
 
-# ==========================================
+# إعداد السجلات (Logging)
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
+# جلب التوكنات من المتغيرات البيئية للمشروع
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
-# ==========================================
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-SYSTEM_PROMPT = """أنت مساعد أكاديمي متخصص لمساعدة الدارسة توحيدة موسى الحسن محمد في إنجاز بحث دبلومها العالي في علوم الحاسوب تحت إشراف د. هبه علي ناصر.
+# إعداد مكتبة جيميناي بالمفتاح المخصص
+genai.configure(api_key=GEMINI_API_KEY)
 
-عنوان البحث: "استخدام استراتيجية التعافي من الكوارث كخدمة (DRaaS) لضمان استمرارية المؤسسات الأكاديمية في مناطق النزاع المسلح - دراسة حالة: جامعة أفريقيا العالمية"
+# التوجيه الأساسي والنظامي للمساعد الأكاديمي (System Prompt)
+SYSTEM_PROMPT = """
+أنت DRaaS5.0 - مساعد بحثي مخصص لمساعدة الباحثة توحيدة موسى الحسن محمد في إنجاز بحث دبلومها العالي في علوم الحاسوب تحت إشراف د. هبة على ناصر.
+عنوان البحث: "استخدام استراتيجية التعافي من الكوارث كخدمة (DRaaS) لجامعة أفريقيا العالمية: دراسة حالة"
 
-تفاصيل البحث:
-- المشكلة: خطط استمرارية الأعمال التقليدية غير مصممة لمواجهة انهيار كامل للبنية التحتية بسبب النزاعات
-- الأهداف: تحليل المخاطر، دراسة DRaaS، اقتراح إطار عمل لجامعة أفريقيا
-- المنهج: نوعي + دراسة حالة + وصفي تحليلي
-- الأدوات: Gartner, Veeam, RTO/RPO, draw.io, AWS/Azure, ISO 22301
-- هيكل البحث: 4 فصول
+تفاصيل البحث الأساسية:
+- المشكلة: خطط استمرارية الأعمال التقليدية غير مصممة لمواجهة انهيار كامل البنية التحتية بسبب النزاعات والحروب.
+- المقترح: إطار عمل متكامل لجامعة أفريقيا العالمية قائم على تقنيات الـ DRaaS لحماية البيانات واستمرارية الأنظمة الحيوية.
+- المنهج: نوعي - دراسة حالة + وصفي تحليلي.
+- الأدوات والتقنيات: Gartner, Veeam, RTO/RPO, draw.io, AWS/Azure, ISO 22301.
+- هيكل البحث: 4 فصول.
 
-قواعد:
-- أجب بالعربية دائماً
-- أجوبة أكاديمية دقيقة ومفصلة
-- استخدم المصطلحات التقنية مع شرحها
-- اربط الإجابات بسياق جامعة أفريقيا العالمية"""
+القواعد الصارمة لإجاباتك:
+1. أجب دائماً باللغة العربية الفصحى وبصياغة أكاديمية رصينة ومتقنة ومقنعة.
+2. استخدم المصطلحات التقنية مع شرحها بوضوح وربطها بسياق جامعة أفريقيا العالمية عند الحاجة.
+3. ساعد الباحثة في صياغة وهيكلة فصول البحث (خاصة الفصل الثالث والتعديلات المطلوبة من المشرفة والدكتورة) وتقديم مقترحات ذكية لتقليل RTO و RPO.
+"""
 
-client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-
-# تخزين سجل المحادثة لكل مستخدم
+# تخزين سجل المحادثة لكل مستخدم للحفاظ على السياق والذاكرة
 user_history = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
+    welcome_text = (
         "🎓 مرحباً توحيدة!\n\n"
-        "أنا مساعدك الأكاديمي لبحث الدبلوم عن DRaaS.\n\n"
+        "أنا مساعدك الأكاديمي DRaaS5.0 لبحث الدبلوم عن DRaaS.\n\n"
         "يمكنك سؤالي عن:\n"
         "📖 الإطار النظري\n"
         "⏱️ مفاهيم RTO/RPO\n"
         "📚 المراجع الأكاديمية\n"
         "🏗️ إطار العمل المقترح\n"
-        "✍️ صياغة فصول البحث\n\n"
+        "✍️ صياغة وتعديل فصول البحث\n\n"
         "اكتبي سؤالك وأنا جاهز! 🚀"
     )
+    await update.message.reply_text(welcome_text)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_text = update.message.text
 
-    # تهيئة سجل المحادثة
+    # تهيئة سجل المحادثة للمستخدم الجديد
     if user_id not in user_history:
         user_history[user_id] = []
 
-    # إضافة رسالة المستخدم
-    user_history[user_id].append({
-        "role": "user",
-        "content": user_text
-    })
-
-    # إرسال "جاري الكتابة..."
-    await context.bot.send_chat_action(
-        chat_id=update.effective_chat.id,
-        action="typing"
-    )
+    # إظهار حالة "جاري الكتابة..." في تليجرام
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
     try:
-        response = client.messages.create(
-       model="claude-3-5-sonnet-latest",
-            max_tokens=1000,
-            system=SYSTEM_PROMPT,
-            messages=user_history[user_id]
+        # إعداد نموذج جيميناي مع التوجيهات الصارمة للبحث
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            system_instruction=SYSTEM_PROMPT
         )
+        
+        # بناء المحادثة الحالية
+        chat = model.start_chat(history=[])
+        
+        # إرسال نص الرسالة واستقبال الرد من جيميناي
+        response = chat.send_message(user_text)
+        reply = response.text
 
-        reply = response.content[0].text
-
-        # إضافة رد البوت للسجل
-        user_history[user_id].append({
-            "role": "assistant",
-            "content": reply
-        })
-
-        # الاحتفاظ بآخر 10 رسائل فقط لتوفير الذاكرة
-        if len(user_history[user_id]) > 20:
-            user_history[user_id] = user_history[user_id][-20:]
-
+        # إرسال الرد للباحثة في تليجرام
         await update.message.reply_text(reply)
 
     except Exception as e:
-        await update.message.reply_text(
-            "⚠️ حدث خطأ، حاولي مرة أخرى."
-        )
         print(f"Error: {e}")
+        await update.message.reply_text("⚠️ حدث خطأ أثناء معالجة الطلب، حاولي مرة أخرى.")
 
 async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_history[user_id] = []
-    await update.message.reply_text("✅ تم مسح سجل المحادثة.")
+    await update.message.reply_text("🧹 تم مسح سجل المحادثة بنجاح ✅")
 
 def main():
+    # بناء وتشغيل البوت بالتوكن المحدث
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("clear", clear))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    print("✅ البوت شغال...")
+    
+    print("✅ البوت شغال ومستعد لاستقبال الرسائل عبر Gemini...")
     app.run_polling()
 
 if __name__ == "__main__":
