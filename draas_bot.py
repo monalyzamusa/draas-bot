@@ -4,13 +4,13 @@
 """
 
 import anthropic
+import os
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters, ContextTypes
 
 # ==========================================
-# ضعي بياناتك هنا
-TELEGRAM_TOKEN = "ضعي_توكن_تيليجرام_هنا"
-ANTHROPIC_API_KEY = "ضعي_anthropic_key_هنا"
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 # ==========================================
 
 SYSTEM_PROMPT = """أنت مساعد أكاديمي متخصص لمساعدة الدارسة توحيدة موسى الحسن محمد في إنجاز بحث دبلومها العالي في علوم الحاسوب تحت إشراف د. هبه علي ناصر.
